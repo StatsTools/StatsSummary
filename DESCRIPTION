@@ -1,0 +1,20 @@
+Package: StatsSummary
+Type: Package
+Title: Quickly Calculate Descriptive Statistics for Clinical Trials
+Version: 1.0.0
+Author: Pedro Henrique Theotonio de Mesquita Pacheco
+Maintainer: Pedro Henrique Theotonio de Mesquita Pacheco <pedrohmp36@gmail.com>
+Description: StatsSummary is an R package focused on simplifying the rapid calculation of
+   measures in clinical trials and statistical analyses. It allows users to easily generate statistics,
+   optimizing time spent on repetitive tasks and ensuring accurate results ready for
+   inclusion in reports and scientific publications.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    dplyr,
+    readr,
+    stringr,
+    tibble,
+    tidyr
+RoxygenNote: 7.3.2
