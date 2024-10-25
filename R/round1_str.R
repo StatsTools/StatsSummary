@@ -1,4 +1,4 @@
-#' Round1 function with conversion to string
+#' Round1 function with conversion to string. 'This function is deprecated. Please, use `roundmath_str` function instead.'
 #'
 #' @param x A number or array to be rounded.
 #' @param decimals A number with de number of decimals points to round.
@@ -20,6 +20,8 @@ round1_str <- function(x, decimals = 1) {
   "`decimals` must be numeric." = is.numeric(decimals),
   "`decimals` cannot be an array." = length(decimals) == 1
  )
+
+ warning('This function is deprecated. Please, use `roundmath_str` function instead.')
 
  stringr::str_trim(format(round1(x, decimals), nsmall = decimals, scientific = FALSE))
 }

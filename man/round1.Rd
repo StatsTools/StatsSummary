@@ -2,7 +2,7 @@
 % Please edit documentation in R/round1.R
 \name{round1}
 \alias{round1}
-\title{Round function to follow IB Stats POP.}
+\title{Round function to follow IB Stats POP. 'This function is deprecated. Please, use `roundmath` function instead.'}
 \usage{
 round1(x, digits = 1)
 }
@@ -15,7 +15,7 @@ round1(x, digits = 1)
 A rounded number.
 }
 \description{
-Round function to follow IB Stats POP.
+Round function to follow IB Stats POP. 'This function is deprecated. Please, use `roundmath` function instead.'
 }
 \examples{
 x <- round1(0.456, 1)

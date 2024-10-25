@@ -2,7 +2,7 @@
 % Please edit documentation in R/round1_str.R
 \name{round1_str}
 \alias{round1_str}
-\title{Round1 function with conversion to string}
+\title{Round1 function with conversion to string. 'This function is deprecated. Please, use `roundmath_str` function instead.'}
 \usage{
 round1_str(x, decimals = 1)
 }
@@ -15,7 +15,7 @@ round1_str(x, decimals = 1)
 Rounded number.
 }
 \description{
-Round1 function with conversion to string
+Round1 function with conversion to string. 'This function is deprecated. Please, use `roundmath_str` function instead.'
 }
 \examples{
 data <- tibble(titer = c(rnorm(100),rbeta(100, 0.2, 0.2)), group = c(rep(1, 100), rep(2, 100)))

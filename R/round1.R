@@ -1,4 +1,4 @@
-#' Round function to follow IB Stats POP.
+#' Round function to follow IB Stats POP. 'This function is deprecated. Please, use `roundmath` function instead.'
 #'
 #' @param x A number to round.
 #' @param digits A number with number of digits to round.
@@ -16,6 +16,8 @@ round1 <- function(x, digits = 1) {
  palavra <- trunc(readr::parse_number(as.character(x*10^(digits))))
  resultado <- ifelse(num_c >= 5,palavra + 1,palavra) / (10^(digits))
  resultado <- ifelse(negativo,-resultado,resultado)
+
+ warning('This function is deprecated. Please, use `roundmath` function instead.')
 
  return(resultado)
 }
