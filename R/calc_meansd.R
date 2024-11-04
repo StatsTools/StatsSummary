@@ -1,18 +1,20 @@
-#' Calculate Median and Q1 and Q3 quantiles
+#' Calculate Mean and Standard Deviation function
 #'
 #' @param data A tibble with the data to be used.
 #' @param var_expr A name with the name of the variable in data.
 #' @param group_expr A name with the name of the group variable in data.
 #' @param decimals A number with the number of decimals points to present the results.
 #' @param groups_order A character array with the names of the groups in order to be presented in the results.
+#' @param dec_sep A character to specify the decimal separator to be used.
 #'
-#' @return A tibble with the Median and Q1 and Q3 quantiles results by group.
+#' @return A tibble with the mean and standard deviation results by group.
 #' @export
 #'
 #' @examples
 #' data <- tibble(titer = c(rnorm(100),rbeta(100, 0.2, 0.2)), group = c(rep(1, 100), rep(2, 100)))
-#' caller_medq1q3(data, titer, group, decimals = 2, groups_order = c('2', '1'))
-caller_medq1q3 <- function(data, var_expr, group_expr, decimals = 1, groups_order = NA_character_) {
+#' calc_meansd(data, titer, group, dec_sep = '.', decimals = 2, groups_order = c('2', '1'))
+calc_meansd <- function(data, var_expr, group_expr, decimals = 1, groups_order = NA_character_, dec_sep = '.') {
+# Validation Step -------------------------------------------------------------
  var_expr <- substitute(var_expr)
  group_expr <- substitute(group_expr)
 
@@ -32,6 +34,12 @@ caller_medq1q3 <- function(data, var_expr, group_expr, decimals = 1, groups_orde
   "`decimals` must be provided." = !is.na(decimals),
   "`decimals` must be numeric." = is.numeric(decimals),
   "`decimals` cannot be an array." = length(decimals) == 1
+ )
+ 
+ stopifnot(
+  "`dec_sep` must be provided." = !is.na(dec_sep),
+  "`dec_sep` must be character." = is.character(dec_sep),
+  "`dec_sep` cannot be an array." = length(dec_sep) == 1
  )
 
  if (any(!is.na(groups_order))) {
@@ -56,29 +64,37 @@ caller_medq1q3 <- function(data, var_expr, group_expr, decimals = 1, groups_orde
   }
  }
 
+# Development Step ------------------------------------------------------------
  values_names <- expand.grid(var = c('N', 'RES'), group = groups) |> dplyr::mutate(var_final = paste0(var, '_', group)) |> dplyr::pull(var_final)
 
  result <- data |>
   dplyr::filter(!is.na(!!var_expr)) |>
   dplyr::mutate(group = as.character(!!group_expr)) |>
   dplyr::group_by(group) |>
-  dplyr::reframe(n = dplyr::n(), median = quantile(!!var_expr, 0.5), q1 = quantile(!!var_expr, 0.25), q3 = quantile(!!var_expr, 0.75)) |>
+  dplyr::reframe(n = dplyr::n(), mean = mean(!!var_expr), sd = sd(!!var_expr)) |>
   dplyr::right_join(tibble::tibble(group = groups), by = 'group') |>
   dplyr::rowwise() |>
   dplyr::mutate(
-   n = ifelse(is.na(n), '0', round1_str(n, 0)),
-   median = ifelse(n == 0, 'NC', round1_str(median, decimals)),
-   q1 = ifelse(n == 0, 'NC', round1_str(q1, decimals)),
-   q3 = ifelse(n == 0, 'NC', round1_str(q3, decimals))
+   mean = ifelse(n == 0, 'NC', roundmath_str(mean, decimals)),
+   sd = ifelse(n < 2, 'NC', roundmath_str(sd, decimals))
+  ) |>
+  dplyr::mutate(
+   n = ifelse(is.na(n), '0', roundmath_str(n, 0))
   ) |>
   dplyr::ungroup() |>
   dplyr::mutate(
    N = n,
-   RES = ifelse(median == 'NC' | q1 == 'NC' | q3 == 'NC', 'NC', paste0(median, ' (', q1, ' \u2012 ', q3, ')'))
+   RES = paste0(mean, ' (', sd, ')')
   ) |>
+  dplyr::mutate(RES = ifelse(RES == 'NC (NC)', 'NC', RES)) |>
   dplyr::select(group, N, RES) |>
   tidyr::pivot_wider(names_from = group, values_from = c(N, RES)) |>
   dplyr::select(!!values_names)
+
+ if (dec_sep != '.') {
+   result <- result |>
+     dplyr::mutate_all(function(x) gsub("\\.", dec_sep, x))
+ }
 
  return(result)
 }
