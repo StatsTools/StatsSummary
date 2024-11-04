@@ -4,12 +4,14 @@
 \alias{roundmath_str}
 \title{Mathematical rounding function with conversion to string}
 \usage{
-roundmath_str(x, decimals = 1)
+roundmath_str(x, decimals = 1, dec_sep = ".")
 }
 \arguments{
 \item{x}{A number or array to be rounded.}
 
 \item{decimals}{A number with the number of decimals points to round.}
+
+\item{dec_sep}{A character to specify the decimal separator to be used.}
 }
 \value{
 Rounded number string.
@@ -18,5 +20,5 @@ Rounded number string.
 Mathematical rounding function with conversion to string
 }
 \examples{
-roundmath_str(x = 3.995, decimals = 1)
+roundmath_str(x = 3.995, decimals = 1, dec_sep = ".")
 }
