@@ -12,14 +12,15 @@
 #' @param zero_to_less A logical to specify if zero percentage should include < signal. Only applicable if decimals is greater than zero.
 #' @param remove_dec100 A logical to specify if 100.0 percent should be treated as 100. Only applicable if decimals is greater than zero.
 #' @param ci_sep A character with a separator symbol to be used in CI.
+#' @param adjust A character with the name of the decimals adjustment function. Use 'roundmath', 'round' or 'trunc'.
 #'
 #' @return A tibble with the N and Frequency results.
 #' @export
 #'
 #' @examples
 #' teste <- tibble(dat = factor(c('A', 'B', 'C', 'C', 'A', 'B'), levels = c('A', 'C', 'B', 'D')), group = c(1, 2, 1, 2, 1, 2))
-#' calc_nfreq(teste, dat, group, pop_size = c('1' = 4, '2' = 4), simplified = TRUE, groups_order = c('2', '1'), decimals = 1, with_ci = TRUE, ci_sep = ';')
-calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci = TRUE, decimals = 1, groups_order = NA_character_, simplified = FALSE, dec_sep = '.', zero_to_less = FALSE, remove_dec100 = TRUE, ci_sep = '\u2012') {
+#' calc_nfreq(teste, dat, group, pop_size = c('1' = 4, '2' = 4), simplified = TRUE, groups_order = c('2', '1'), decimals = 1, with_ci = TRUE, ci_sep = ';', adjust = 'roundmath')
+calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci = TRUE, decimals = 1, groups_order = NA_character_, simplified = FALSE, dec_sep = '.', zero_to_less = FALSE, remove_dec100 = TRUE, ci_sep = '\u2012', adjust = 'roundmath') {
 # Validation Step -------------------------------------------------------------
  var_expr <- substitute(var_expr)
  group_expr <- substitute(group_expr)
@@ -42,12 +43,30 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
   "`decimals` cannot be an array." = length(decimals) == 1,
   "`decimals` must be greater than or equal to zero." = decimals >= 0
  )
- 
+
  stopifnot(
   "`ci_sep` must be provided." = !is.na(ci_sep),
   "`ci_sep` must be a character." = is.character(ci_sep),
   "`ci_sep` cannot be an array." = length(ci_sep) == 1
  )
+
+ stopifnot(
+    "`adjust` must be a character." = is.character(adjust),
+    "`adjust` cannot be an array." = length(adjust) == 1,
+    "`adjust` must be 'roundmath', 'round' or 'trunc'." = adjust %in% c('roundmath', 'round', 'trunc')
+  )
+
+  trunc1 <- function(x, decimals) {
+    trunc(x * 10^decimals) / 10^decimals
+  }
+
+  if (adjust == 'roundmath') {
+    adjust <- roundmath
+  } else if (adjust == 'round') {
+    adjust <- round
+  } else if (adjust == 'trunc') {
+    adjust <- trunc1
+  }
 
  if (any(!is.na(groups_order))) {
   if (is.factor(data |> dplyr::pull(!!group_expr))) {
@@ -158,7 +177,7 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
   dplyr::right_join(n_denom_group, by = c('group', 'var')) |>
   dplyr::mutate(n = ifelse(is.na(n), 0, n)) |>
   dplyr::rowwise() |>
-  dplyr::mutate(RES = ifelse(total == 0, 'NC', roundmath_str(100 * n / total, decimals)))
+  dplyr::mutate(RES = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * n / total, decimals), decimals)))
 
  if (with_ci == TRUE) {
   ic1_fun <- function(n, total) binom.test(n, total)$conf.int[1]
@@ -170,16 +189,16 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
     result <- result |>
       dplyr::mutate(RES = ifelse(RES == dec100, '100', RES)) |>
       dplyr::mutate(
-        CI95_1 = ifelse(total == 0, 'NC', roundmath_str(100 * mapply(ic1_fun, n, total), decimals)),
-        CI95_2 = ifelse(total == 0, 'NC', roundmath_str(100 * mapply(ic2_fun, n, total), decimals))
+        CI95_1 = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * mapply(ic1_fun, n, total), decimals), decimals)),
+        CI95_2 = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * mapply(ic2_fun, n, total), decimals), decimals))
       ) |>
       dplyr::mutate(CI95_1 = ifelse(CI95_1 == dec100, '100', CI95_1), CI95_2 = ifelse(CI95_2 == dec100, '100', CI95_2)) |>
       dplyr::mutate(CI95 = ifelse(total == 0, 'NC', paste0('(', CI95_1, ' ', ci_sep, ' ', CI95_2, ')')))
   } else {
     result <- result |>
       dplyr::mutate(
-        CI95_1 = ifelse(total == 0, 'NC', roundmath_str(100 * mapply(ic1_fun, n, total), decimals)),
-        CI95_2 = ifelse(total == 0, 'NC', roundmath_str(100 * mapply(ic2_fun, n, total), decimals))
+        CI95_1 = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * mapply(ic1_fun, n, total), decimals), decimals)),
+        CI95_2 = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * mapply(ic2_fun, n, total), decimals), decimals))
       ) |>
       dplyr::mutate(CI95 = ifelse(total == 0, 'NC', paste0('(', CI95_1, ' \u2012 ', CI95_2, ')')))
   }
@@ -188,12 +207,12 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
 
   if (simplified == TRUE) {
    result <- result |>
-    dplyr::mutate(M = ifelse(total == 0, 'NC', paste0(roundmath_str(n, 0), '/', roundmath_str(total, 0)))) |>
+    dplyr::mutate(M = ifelse(total == 0, 'NC', paste0(roundmath_str(adjust(n, 0), 0), '/', roundmath_str(adjust(total, 0), 0)))) |>
     dplyr::mutate(N = NA_character_)
   } else {
    result <- result |>
-    dplyr::mutate(N = ifelse(total == 0, '0', roundmath_str(total, 0))) |>
-    dplyr::mutate(M = ifelse(total == 0, 'NC', roundmath_str(n, 0)))
+    dplyr::mutate(N = ifelse(total == 0, '0', roundmath_str(adjust(total, 0), 0))) |>
+    dplyr::mutate(M = ifelse(total == 0, 'NC', roundmath_str(adjust(n, 0), 0)))
   }
 
   result <- result |>
@@ -230,16 +249,16 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
 
   if (simplified == TRUE) {
    result <- result |>
-    dplyr::mutate(M = ifelse(total == 0, 'NC', paste0(roundmath_str(n, 0), '/', roundmath_str(total, 0)))) |>
+    dplyr::mutate(M = ifelse(total == 0, 'NC', paste0(roundmath_str(adjust(n, 0), 0), '/', roundmath_str(adjust(total, 0), 0)))) |>
     dplyr::mutate(N = NA_character_)
   } else {
    result <- result |>
-    dplyr::mutate(N = ifelse(total == 0, '0', roundmath_str(total, 0))) |>
-    dplyr::mutate(M = ifelse(total == 0, 'NC', roundmath_str(n, 0)))
+    dplyr::mutate(N = ifelse(total == 0, '0', roundmath_str(adjust(total, 0), 0))) |>
+    dplyr::mutate(M = ifelse(total == 0, 'NC', roundmath_str(adjust(n, 0), 0)))
   }
 
   result <- result |>
-   dplyr::mutate(total = ifelse(total == 0, '0', roundmath_str(total, 0))) |>
+   dplyr::mutate(total = ifelse(total == 0, '0', roundmath_str(adjust(total, 0), 0))) |>
    dplyr::ungroup() |>
    dplyr::select(group, var, N, M, RES) |>
    dplyr::rename(VAR = var, TOTAL = N) |>

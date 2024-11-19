@@ -9,15 +9,16 @@
 #' @param nboot A number with the number of replications to be applied if bootstrap is selected.
 #' @param ci_sep A character with a separator symbol to be used in CI.
 #' @param dec_sep A character to specify the decimal separator to be used.
-#' @param base A number with the number to be used as base in the antilogarithm calculation. 
+#' @param base A number with the number to be used as base in the antilogarithm calculation.
+#' @param adjust A character with the name of the decimals adjustment function. Use 'roundmath', 'round' or 'trunc'.
 
 #' @return A tibble with the GMTR results.
 #' @export
 #'
 #' @examples
 #' data <- tibble(titer = c(rnorm(100),rbeta(100, 0.2, 0.2)), group = c(rep(1, 100), rep(2, 100)))
-#' calc_gmtr(data = data, var_expr = titer, group_expr = group, groups_order = c('2', '1'), method_ci = 't.test', decimals = 2, ci_sep = '\u2012', dec_sep = ".", base = exp(1))
-calc_gmtr <- function(data, var_expr, group_expr, method_ci = "t.test", decimals = 1, groups_order, nboot = 1000, ci_sep = '\u2012', dec_sep = ".", base = exp(1)) {
+#' calc_gmtr(data = data, var_expr = titer, group_expr = group, groups_order = c('2', '1'), method_ci = 't.test', decimals = 2, ci_sep = '\u2012', dec_sep = ".", base = exp(1), adjust = 'roundmath')
+calc_gmtr <- function(data, var_expr, group_expr, method_ci = "t.test", decimals = 1, groups_order, nboot = 1000, ci_sep = '\u2012', dec_sep = ".", base = exp(1), adjust = 'roundmath') {
 # Validation Step -------------------------------------------------------------
  var_expr <- substitute(var_expr)
  group_expr <- substitute(group_expr)
@@ -51,19 +52,36 @@ calc_gmtr <- function(data, var_expr, group_expr, method_ci = "t.test", decimals
   "`base` must be numeric." = is.numeric(base),
   "`base` cannot be an array." = length(base) == 1
   )
- 
+
  stopifnot(
   "`ci_sep` must be provided." = !is.na(ci_sep),
   "`ci_sep` must be a character." = is.character(ci_sep),
   "`ci_sep` cannot be an array." = length(ci_sep) == 1
  )
- 
+
  stopifnot(
   "`dec_sep` must be provided." = !is.na(dec_sep),
   "`dec_sep` must be character." = is.character(dec_sep),
   "`dec_sep` cannot be an array." = length(dec_sep) == 1
  )
 
+ stopifnot(
+    "`adjust` must be a character." = is.character(adjust),
+    "`adjust` cannot be an array." = length(adjust) == 1,
+    "`adjust` must be 'roundmath', 'round' or 'trunc'." = adjust %in% c('roundmath', 'round', 'trunc')
+  )
+
+  trunc1 <- function(x, decimals) {
+    trunc(x * 10^decimals) / 10^decimals
+  }
+
+  if (adjust == 'roundmath') {
+    adjust <- roundmath
+  } else if (adjust == 'round') {
+    adjust <- round
+  } else if (adjust == 'trunc') {
+    adjust <- trunc1
+  }
 
 
  if (is.factor(data |> dplyr::pull(!!group_expr))) {
@@ -94,7 +112,7 @@ calc_gmtr <- function(data, var_expr, group_expr, method_ci = "t.test", decimals
     dplyr::pull(!!var_expr)
 
    shapiro_result <- tryCatch(shapiro.test(titer), error = function(e) return(NA_real_))
-   
+
    return(shapiro_result)
   })
   names(shapiro_results) <- intern.groups
@@ -114,21 +132,21 @@ calc_gmtr <- function(data, var_expr, group_expr, method_ci = "t.test", decimals
  gmtr_val <- gmtr(titer1, titer2, method_ci = method_ci, nboot = nboot, base = base)
 
  result <- tibble::tibble(
-  N1 = roundmath_str(gmtr_val[1], 0), 
-  N2 = roundmath_str(gmtr_val[2], 0),                   
-  RES = ifelse(is.na(gmtr_val[3]), 'NC', roundmath_str(gmtr_val[3], decimals)),
-  CI95 = ifelse(is.na(gmtr_val[4]) | is.na(gmtr_val[5]), 'NC', paste0('(', roundmath_str(gmtr_val[4], decimals), ' ', ci_sep,' ', roundmath_str(gmtr_val[5], decimals), ')'))
+  N1 = roundmath_str(adjust(gmtr_val[1], 0), 0),
+  N2 = roundmath_str(adjust(gmtr_val[2], 0), 0),
+  RES = ifelse(is.na(gmtr_val[3]), 'NC', roundmath_str(adjust(gmtr_val[3], decimals), decimals)),
+  CI95 = ifelse(is.na(gmtr_val[4]) | is.na(gmtr_val[5]), 'NC', paste0('(', roundmath_str(adjust(gmtr_val[4], decimals), decimals), ' ', ci_sep,' ', roundmath_str(adjust(gmtr_val[5], decimals), decimals), ')'))
  ) %>%
-  rename_at(vars(N1), function(x) paste0('N_',intern.groups[1])) %>% 
+  rename_at(vars(N1), function(x) paste0('N_',intern.groups[1])) %>%
   rename_at(vars(N2), function(x) paste0('N_',intern.groups[2]))
 
  attr(result, "normality.test") <- shapiro_results
  attr(result, "ic.method.used") <- method_ci
- 
+
  names(gmtr_val) <- c(paste0('N_',intern.groups[1]), paste0('N_',intern.groups[2]),
                       'GMTR', 'LInf', 'LSup')
  attr(result, "raw.value") <- gmtr_val
- 
+
  if (dec_sep != '.') {
   result <- result |>
     dplyr::mutate_all(function(x) gsub("\\.", dec_sep, x))

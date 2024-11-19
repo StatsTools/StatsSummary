@@ -8,14 +8,15 @@
 #' @param dec_sep A character to specify the decimal separator to be used.
 #' @param type A number between 1 and 9 selecting one of the nine quantile algorithms detailed in quantile function to be used.
 #' @param sep A character with a separator symbol
+#' @param adjust A character with the name of the decimals adjustment function. Use 'roundmath', 'round' or 'trunc'.
 #'
 #' @return A tibble with the Median and Q1 and Q3 quantiles results by group.
 #' @export
 #'
 #' @examples
 #' data <- tibble(titer = c(rnorm(100),rbeta(100, 0.2, 0.2)), group = c(rep(1, 100), rep(2, 100)))
-#' calc_medqrt(data, titer, group,  dec_sep = '.', decimals = 2, groups_order = c('2', '1'), type = 7, sep = ';')
-calc_medqrt <- function(data, var_expr, group_expr, decimals = 1, groups_order = NA_character_, dec_sep = '.', type = 7, sep = '\u2012') {
+#' calc_medqrt(data, titer, group,  dec_sep = '.', decimals = 2, groups_order = c('2', '1'), type = 7, sep = ';', adjust = 'roundmath')
+calc_medqrt <- function(data, var_expr, group_expr, decimals = 1, groups_order = NA_character_, dec_sep = '.', type = 7, sep = '\u2012', adjust = 'roundmath') {
 # Validation Step -------------------------------------------------------------
  var_expr <- substitute(var_expr)
  group_expr <- substitute(group_expr)
@@ -49,13 +50,31 @@ calc_medqrt <- function(data, var_expr, group_expr, decimals = 1, groups_order =
   "`type` must be numeric." = is.numeric(type),
   "`type` cannot be an array." = length(type) == 1
  )
- 
+
  stopifnot(
   "`sep` must be provided." = !is.na(sep),
   "`sep` must be a character." = is.character(sep),
   "`sep` cannot be an array." = length(sep) == 1
- ) 
- 
+ )
+
+ stopifnot(
+    "`adjust` must be a character." = is.character(adjust),
+    "`adjust` cannot be an array." = length(adjust) == 1,
+    "`adjust` must be 'roundmath', 'round' or 'trunc'." = adjust %in% c('roundmath', 'round', 'trunc')
+  )
+
+  trunc1 <- function(x, decimals) {
+    trunc(x * 10^decimals) / 10^decimals
+  }
+
+  if (adjust == 'roundmath') {
+    adjust <- roundmath
+  } else if (adjust == 'round') {
+    adjust <- round
+  } else if (adjust == 'trunc') {
+    adjust <- trunc1
+  }
+
  if (any(!is.na(groups_order))) {
 
   if (is.factor(data |> dplyr::pull(!!group_expr))) {
@@ -89,10 +108,10 @@ calc_medqrt <- function(data, var_expr, group_expr, decimals = 1, groups_order =
   dplyr::right_join(tibble::tibble(group = groups), by = 'group') |>
   dplyr::rowwise() |>
   dplyr::mutate(
-   n = ifelse(is.na(n), '0', roundmath_str(n, 0)),
-   median = ifelse(n == 0, 'NC', roundmath_str(median, decimals)),
-   q1 = ifelse(n == 0, 'NC', roundmath_str(q1, decimals)),
-   q3 = ifelse(n == 0, 'NC', roundmath_str(q3, decimals))
+   n = ifelse(is.na(n), '0', roundmath_str(adjust(n, 0), 0)),
+   median = ifelse(n == 0, 'NC', roundmath_str(adjust(median, decimals), decimals)),
+   q1 = ifelse(n == 0, 'NC', roundmath_str(adjust(q1, decimals), decimals)),
+   q3 = ifelse(n == 0, 'NC', roundmath_str(adjust(q3, decimals), decimals))
   ) |>
   dplyr::ungroup() |>
   dplyr::mutate(
