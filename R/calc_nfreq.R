@@ -5,6 +5,7 @@
 #' @param group_expr A name with the name of the group variable in data.
 #' @param pop_size A named vector with population size by group. The names must be the names of the groups to be used.
 #' @param with_ci A logical to specify if calculate CI.
+#' @param ci_level A number to specify the confidence level for the returned confidence interval.
 #' @param decimals A number with the number of decimals points to present the results.
 #' @param groups_order A character array with the names of the groups in order to be presented in the results.
 #' @param simplified A logical to specify if Simplify the frequency presentation.
@@ -20,7 +21,7 @@
 #' @examples
 #' teste <- tibble(dat = factor(c('A', 'B', 'C', 'C', 'A', 'B'), levels = c('A', 'C', 'B', 'D')), group = c(1, 2, 1, 2, 1, 2))
 #' calc_nfreq(teste, dat, group, pop_size = c('1' = 4, '2' = 4), simplified = TRUE, groups_order = c('2', '1'), decimals = 1, with_ci = TRUE, ci_sep = ';', adjust = 'roundmath')
-calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci = TRUE, decimals = 1, groups_order = NA_character_, simplified = FALSE, dec_sep = '.', zero_to_less = FALSE, remove_dec100 = TRUE, ci_sep = '\u2012', adjust = 'roundmath') {
+calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci = TRUE, ci_level = 0.95, decimals = 1, groups_order = NA_character_, simplified = FALSE, dec_sep = '.', zero_to_less = FALSE, remove_dec100 = TRUE, ci_sep = '\u2012', adjust = 'roundmath') {
 # Validation Step -------------------------------------------------------------
  var_expr <- substitute(var_expr)
  group_expr <- substitute(group_expr)
@@ -180,8 +181,8 @@ calc_nfreq <- function(data, var_expr, group_expr, pop_size = NA_real_, with_ci 
   dplyr::mutate(RES = ifelse(total == 0, 'NC', roundmath_str(adjust(100 * n / total, decimals), decimals)))
 
  if (with_ci == TRUE) {
-  ic1_fun <- function(n, total) binom.test(n, total)$conf.int[1]
-  ic2_fun <- function(n, total) binom.test(n, total)$conf.int[2]
+  ic1_fun <- function(n, total) binom.test(n, total, conf.level = ci_level)$conf.int[1]
+  ic2_fun <- function(n, total) binom.test(n, total, conf.level = ci_level)$conf.int[2]
 
   if (remove_dec100 == TRUE) {
     dec100 <- stringr::str_flatten(c('100.', rep('0', decimals)))
