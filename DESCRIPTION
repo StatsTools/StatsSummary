@@ -1,7 +1,7 @@
 Package: StatsSummary
 Type: Package
 Title: Quickly Calculate Descriptive Statistics for Clinical Trials
-Version: 1.3.0
+Version: 1.4.0
 Author: Pedro Henrique Theotonio de Mesquita Pacheco
 Maintainer: Pedro Henrique Theotonio de Mesquita Pacheco <pedrohmp36@gmail.com>
 Description: StatsSummary is an R package focused on simplifying the rapid calculation of
